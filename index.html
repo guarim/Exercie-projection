@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projections Orthogonales - Exercices Interactifs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .exercise {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            border: 2px solid #e0e7ff;
+        }
+        
+        .exercise-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .exercise-title {
+            font-size: 1.5em;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .exercise-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-correct {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-incorrect {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .exercise-content {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        .view-3d-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .view-3d-container h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+            text-align: center;
+        }
+        
+        #canvas3d {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #e0e7ff;
+            border-radius: 8px;
+            display: block;
+        }
+        
+        .projection-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .projection-layout h3 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .projection-grid {
+            display: grid;
+            grid-template-columns: 150px 150px 150px;
+            grid-template-rows: 150px 150px 150px;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .drop-zone {
+            border: 3px dashed #cbd5e1;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: scale(1.05);
+        }
+        
+        .drop-zone.filled {
+            border-color: #667eea;
+            border-style: solid;
+        }
+        
+        .drop-zone.correct {
+            border-color: #10b981;
+            background: #d1fae5;
+        }
+        
+        .drop-zone.incorrect {
+            border-color: #ef4444;
+            background: #fee2e2;
+        }
+        
+        .drop-zone-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 0.75em;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        .empty-slot {
+            background: transparent;
+            border: none;
+        }
+        
+        /* Position des vues selon normes françaises */
+        .zone-dessus { grid-column: 2; grid-row: 1; }
+        .zone-gauche { grid-column: 1; grid-row: 2; }
+        .zone-face { grid-column: 2; grid-row: 2; border-color: #667eea; border-width: 4px; }
+        .zone-droite { grid-column: 3; grid-row: 2; }
+        .zone-dessous { grid-column: 2; grid-row: 3; }
+        
+        .views-bank {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            justify-content: center;
+        }
+        
+        .views-bank h4 {
+            width: 100%;
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .view-card {
+            width: 130px;
+            height: 130px;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: move;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .view-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+        
+        .view-card.dragging {
+            opacity: 0.5;
+        }
+        
+        .view-card canvas {
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .view-label {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(102, 126, 234, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-check {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-check:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        
+        .btn-reset {
+            background: #64748b;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #475569;
+            transform: translateY(-2px);
+        }
+        
+        .btn-next {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-next:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        
+        .results {
+            margin-top: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .score {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .score-label {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .feedback {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            font-size: 1.2em;
+        }
+        
+        .corrections {
+            margin-top: 30px;
+            text-align: left;
+            background: white;
+            color: #333;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .correction-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Projections Orthogonales</h1>
+        <p class="subtitle">Normes Françaises - Glissez les vues autour de la vue de face</p>
+        
+        <div id="exercises"></div>
+        
+        <div class="buttons">
+            <button class="btn-check" onclick="checkAnswers()">✓ Vérifier</button>
+            <button class="btn-reset" onclick="resetExercise()">↻ Réinitialiser</button>
+            <button class="btn-next hidden" onclick="nextExercise()">→ Suivant</button>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="score-label">Votre note</div>
+            <div class="score" id="score">0/20</div>
+            <div class="feedback" id="feedback"></div>
+            <div class="corrections" id="corrections"></div>
+        </div>
+    </div>
+
+    <script>
+        const exercises = [
+            {
+                id: 1,
+                name: "Forme en L",
+                type: "L"
+            },
+            {
+                id: 2,
+                name: "Cube avec cylindre",
+                type: "cube-cylinder"
+            },
+            {
+                id: 3,
+                name: "Escalier",
+                type: "stairs"
+            }
+        ];
+
+        let currentExercise = 0;
+        let answers = {};
+        let score = 0;
+        let scene, camera, renderer, currentMesh;
+
+        function init() {
+            createExerciseUI();
+            setupDragAndDrop();
+        }
+
+        function createExerciseUI() {
+            const container = document.getElementById('exercises');
+            const ex = exercises[currentExercise];
+            
+            container.innerHTML = `
+                <div class="exercise">
+                    <div class="exercise-header">
+                        <div class="exercise-title">Exercice ${ex.id}: ${ex.name}</div>
+                        <div class="exercise-status status-pending" id="status">En cours...</div>
+                    </div>
+                    <div class="exercise-content">
+                        <div class="view-3d-container">
+                            <h3>Vue en perspective 3D</h3>
+                            <canvas id="canvas3d"></canvas>
+                        </div>
+                        <div class="projection-layout">
+                            <h3>Placez les vues (Normes Françaises)</h3>
+                            <div class="projection-grid">
+                                <div class="empty-slot"></div>
+                                <div class="drop-zone zone-dessus" data-view="dessus">
+                                    <div class="drop-zone-label">Dessus</div>
+                                </div>
+                                <div class="empty-slot"></div>
+                                
+                                <div class="drop-zone zone-gauche" data-view="gauche">
+                                    <div class="drop-zone-label">Gauche</div>
+                                </div>
+                                <div class="drop-zone zone-face" data-view="face">
+                                    <div class="drop-zone-label">FACE</div>
+                                </div>
+                                <div class="drop-zone zone-droite" data-view="droite">
+                                    <div class="drop-zone-label">Droite</div>
+                                </div>
+                                
+                                <div class="empty-slot"></div>
+                                <div class="drop-zone zone-dessous" data-view="dessous">
+                                    <div class="drop-zone-label">Dessous</div>
+                                </div>
+                                <div class="empty-slot"></div>
+                            </div>
+                            <div class="views-bank" id="views-bank"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                init3DView(ex.type);
+                createViewCards(ex.type);
+            }, 100);
+        }
+
+        function init3DView(shapeType) {
+            const canvas = document.getElementById('canvas3d');
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9ff);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(5, 4, 7);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(width, height);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x667eea,
+                shininess: 30,
+                flatShading: false
+            });
+
+            const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x1e293b, linewidth: 2 });
+
+            if (shapeType === "L") {
+                const group = new THREE.Group();
+                
+                const geom1 = new THREE.BoxGeometry(1, 3, 1);
+                const mesh1 = new THREE.Mesh(geom1, material);
+                mesh1.position.set(0, 0, 0);
+                group.add(mesh1);
+                const edges1 = new THREE.EdgesGeometry(geom1);
+                const line1 = new THREE.LineSegments(edges1, edgesMaterial);
+                line1.position.copy(mesh1.position);
+                group.add(line1);
+                
+                const geom2 = new THREE.BoxGeometry(2, 1, 1);
+                const mesh2 = new THREE.Mesh(geom2, material);
+                mesh2.position.set(0.5, -1, 0);
+                group.add(mesh2);
+                const edges2 = new THREE.EdgesGeometry(geom2);
+                const line2 = new THREE.LineSegments(edges2, edgesMaterial);
+                line2.position.copy(mesh2.position);
+                group.add(line2);
+                
+                currentMesh = group;
+                scene.add(group);
+            } else if (shapeType === "cube-cylinder") {
+                const group = new THREE.Group();
+                
+                const cubeGeom = new THREE.BoxGeometry(2, 2, 2);
+                const cube = new THREE.Mesh(cubeGeom, material);
+                cube.position.set(0, 0, 0);
+                group.add(cube);
+                const cubeEdges = new THREE.EdgesGeometry(cubeGeom);
+                const cubeLine = new THREE.LineSegments(cubeEdges, edgesMaterial);
+                cubeLine.position.copy(cube.position);
+                group.add(cubeLine);
+                
+                const cylGeom = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
+                const cylinder = new THREE.Mesh(cylGeom, material);
+                cylinder.position.set(0, 2, 0);
+                group.add(cylinder);
+                const cylEdges = new THREE.EdgesGeometry(cylGeom);
+                const cylLine = new THREE.LineSegments(cylEdges, edgesMaterial);
+                cylLine.position.copy(cylinder.position);
+                group.add(cylLine);
+                
+                currentMesh = group;
+                scene.add(group);
+            } else if (shapeType === "stairs") {
+                const group = new THREE.Group();
+                
+                for (let i = 0; i < 3; i++) {
+                    const stepGeom = new THREE.BoxGeometry(2, 0.5, 1);
+                    const step = new THREE.Mesh(stepGeom, material);
+                    step.position.set(0, i * 0.5 - 0.5, -i * 0.5);
+                    group.add(step);
+                    const stepEdges = new THREE.EdgesGeometry(stepGeom);
+                    const stepLine = new THREE.LineSegments(stepEdges, edgesMaterial);
+                    stepLine.position.copy(step.position);
+                    group.add(stepLine);
+                }
+                
+                currentMesh = group;
+                scene.add(group);
+            }
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (currentMesh) {
+                currentMesh.rotation.y += 0.005;
+            }
+            renderer.render(scene, camera);
+        }
+
+        function createViewCards(shapeType) {
+            const bank = document.getElementById('views-bank');
+            bank.innerHTML = '<h4>Vues disponibles (glissez-déposez)</h4>';
+            
+            const views = ['face', 'dessus', 'droite', 'gauche', 'dessous'];
+            views.forEach(viewType => {
+                const card = document.createElement('div');
+                card.className = 'view-card';
+                card.draggable = true;
+                card.dataset.view = viewType;
+                card.innerHTML = `
+                    <canvas width="120" height="120"></canvas>
+                    <div class="view-label">${viewType}</div>
+                `;
+                bank.appendChild(card);
+                
+                drawView(card.querySelector('canvas'), viewType, shapeType);
+            });
+        }
+
+        function drawView(canvas, viewType, shapeType) {
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 120, 120);
+            
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = '#e0e7ff';
+            
+            if (shapeType === "L") {
+                if (viewType === "face") {
+                    ctx.fillRect(30, 15, 30, 90);
+                    ctx.strokeRect(30, 15, 30, 90);
+                    ctx.fillRect(30, 75, 60, 30);
+                    ctx.strokeRect(30, 75, 60, 30);
+                } else if (viewType === "dessus") {
+                    ctx.fillRect(30, 30, 30, 60);
+                    ctx.strokeRect(30, 30, 30, 60);
+                    ctx.fillRect(30, 60, 60, 30);
+                    ctx.strokeRect(30, 60, 60, 30);
+                } else if (viewType === "droite") {
+                    ctx.fillRect(30, 15, 60, 90);
+                    ctx.strokeRect(30, 15, 60, 90);
+                    ctx.setLineDash([5, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(30, 75);
+                    ctx.lineTo(90, 75);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else if (viewType === "gauche") {
+                    ctx.fillRect(30, 15, 60, 90);
+                    ctx.strokeRect(30, 15, 60, 90);
+                    ctx.setLineDash([5, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(30, 75);
+                    ctx.lineTo(90, 75);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else if (viewType === "dessous") {
+                    ctx.fillRect(30, 30, 30, 60);
+                    ctx.strokeRect(30, 30, 30, 60);
+                    ctx.fillRect(30, 30, 60, 30);
+                    ctx.strokeRect(30, 30, 60, 30);
+                }
+            } else if (shapeType === "cube-cylinder") {
+                if (viewType === "face") {
+                    ctx.fillRect(30, 50, 60, 60);
+                    ctx.strokeRect(30, 50, 60, 60);
+                    ctx.fillStyle = '#c7d2fe';
+                    ctx.beginPath();
+                    ctx.arc(60, 50, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillRect(42, 10, 36, 40);
+                    ctx.strokeRect(42, 10, 36, 40);
+                } else if (viewType === "dessus") {
+                    ctx.fillRect(30, 30, 60, 60);
+                    ctx.strokeRect(30, 30, 60, 60);
+                    ctx.fillStyle = '#c7d2fe';
+                    ctx.beginPath();
+                    ctx.arc(60, 60, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (viewType === "droite" || viewType === "gauche") {
+                    ctx.fillRect(30, 50, 60, 60);
+                    ctx.strokeRect(30, 50, 60, 60);
+                    ctx.fillRect(42, 10, 36, 40);
+                    ctx.strokeRect(42, 10, 36, 40);
+                } else if (viewType === "dessous") {
+                    ctx.fillRect(30, 30, 60, 60);
+                    ctx.strokeRect(30, 30, 60, 60);
+                    ctx.setLineDash([5, 3]);
+                    ctx.beginPath();
+                    ctx.arc(60, 60, 18, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            } else if (shapeType === "stairs") {
+                if (viewType === "face") {
+                    for (let i = 0; i < 3; i++) {
+                        ctx.fillRect(30 + i*20, 70 - i*20, 20, 40);
+                        ctx.strokeRect(30 + i*20, 70 - i*20, 20, 40);
+                    }
+                } else if (viewType === "dessus") {
+                    ctx.fillRect(30, 35, 60, 50);
+                    ctx.strokeRect(30, 35, 60, 50);
+                    ctx.beginPath();
+                    ctx.moveTo(50, 35);
+                    ctx.lineTo(50, 85);
+                    ctx.moveTo(70, 35);
+                    ctx.lineTo(70, 85);
+                    ctx.stroke();
+                } else if (viewType === "droite") {
+                    ctx.fillRect(30, 35, 60, 50);
+                    ctx.strokeRect(30, 35, 60, 50);
+                    ctx.setLineDash([5, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(30, 52);
+                    ctx.lineTo(90, 52);
+                    ctx.moveTo(30, 68);
+                    ctx.lineTo(90, 68);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else if (viewType === "gauche") {
+                    ctx.fillRect(30, 35, 60, 50);
+                    ctx.strokeRect(30, 35, 60, 50);
+                    ctx.setLineDash([5, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(30, 52);
+                    ctx.lineTo(90, 52);
+                    ctx.moveTo(30, 68);
+                    ctx.lineTo(90, 68);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else if (viewType === "dessous") {
+                    ctx.fillRect(30, 35, 60, 50);
+                    ctx.strokeRect(30, 35, 60, 50);
+                    ctx.setLineDash([5, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(50, 35);
+                    ctx.lineTo(50, 85);
+                    ctx.moveTo(70, 35);
+                    ctx.lineTo(70, 85);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        function setupDragAndDrop() {
+            const cards = document.querySelectorAll('.view-card');
+            const zones = document.querySelectorAll('.drop-zone');
+            
+            cards.forEach(card => {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+            });
+            
+            zones.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('drop', handleDrop);
+                zone.addEventListener('dragleave', handleDragLeave);
+            });
+        }
+
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+            return false;
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) e.stopPropagation();
+            e.preventDefault();
+            
+            this.classList.remove('drag-over');
+            
+            if (draggedElement) {
+                const zoneView = this.dataset.view;
+                const cardView = draggedElement.dataset.view;
+                
+                const existingCard = this.querySelector('.view-card');
+                if (existingCard) {
+                    document.getElementById('views-bank').appendChild(existingCard);
+                }
+                
+                this.appendChild(draggedElement);
+                this.classList.add('filled');
+                
+                answers[zoneView] = cardView;
+            }
+            
+            return false;
+        }
+
+        function checkAnswers() {
+            const positions = ['face', 'dessus', 'droite', 'gauche', 'dessous'];
+            let correct = 0;
+            let total = positions.length;
+            const corrections = [];
+            
+            positions.forEach(position => {
+                const zone = document.querySelector(`[data-view="${position}"]`);
+                const userAnswer = answers[position];
+                const correctAnswer = position;
+                
+                if (userAnswer === correctAnswer) {
+                    correct++;
+                    zone.classList.add('correct');
+                    zone.classList.remove('incorrect');
+                } else {
+                    zone.classList.add('incorrect');
+                    zone.classList.remove('correct');
+                    corrections.push({
+                        position: position,
+                        correct: correctAnswer,
+                        user: userAnswer || "vide"
+                    });
+                }
+            });
+            
+            const status = document.getElementById('status');
+            if (correct === total) {
+                status.textContent = `✓ Parfait! ${correct}/${total}`;
+                status.className = 'exercise-status status-correct';
+            } else {
+                status.textContent = `✗ ${correct}/${total} correctes`;
+                status.className = 'exercise-status status-incorrect';
+            }
+            
+            score += (correct / total) * (20 / exercises.length);
+            
+            if (currentExercise === exercises.length - 1) {
+                showResults(corrections);
+            } else {
+                document.querySelector('.btn-next').classList.remove('hidden');
+            }
+        }
+
+        function showResults(lastCorrections) {
+            const resultsDiv = document.getElementById('results');
+            const scoreDiv = document.getElementById('score');
+            const feedbackDiv = document.getElementById('feedback');
+            const correctionsDiv = document.getElementById('corrections');
+            
+            const finalScore = Math.round(score * 10) / 10;
+            scoreDiv.textContent = `${finalScore
