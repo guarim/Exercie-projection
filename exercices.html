@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projections Orthogonales | Espace Élève</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #cbd5e1;
+            --accent: #64748b;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Identification */
+        #login-screen { text-align: center; max-width: 400px; margin: auto; }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        /* Barre de progression */
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        #progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 10%;
+            transition: width 0.3s ease;
+        }
+
+        /* Layout révisé : 3D (0.6fr) vs Projections (1.4fr) */
+        .exercise-grid {
+            display: grid;
+            grid-template-columns: 0.6fr 1.4fr;
+            gap: 30px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        /* Vue 3D diminuée */
+        .view-3d-container {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+        .view-3d-container img {
+            width: 100%; /* S'adapte au container réduit */
+            max-width: 250px; 
+            height: auto;
+        }
+
+        /* Croix de projection augmentée */
+        .projection-map {
+            display: grid;
+            grid-template-columns: repeat(3, 180px); /* Augmenté de 120px à 180px */
+            grid-template-rows: repeat(3, 180px);    /* Augmenté de 120px à 180px */
+            gap: 15px;
+            justify-content: center;
+            background: #f1f5f9;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        .drop-zone {
+            background: #fff;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .drop-zone img { width: 100%; height: 100%; object-fit: contain; }
+        .drop-zone.hover { border-color: var(--primary); background: #eff6ff; }
+        .tag { position: absolute; bottom: 5px; font-size: 10px; font-weight: bold; color: var(--accent); background: rgba(255,255,255,0.8); padding: 2px 5px; border-radius: 4px; }
+
+        /* Palette augmentée */
+        .assets-shelf {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            min-height: 200px;
+            flex-wrap: wrap;
+        }
+
+        .draggable-img {
+            width: 170px; /* Augmenté de 100px à 170px */
+            height: 170px;
+            cursor: grab;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: white;
+            object-fit: contain;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover { background: var(--primary-hover); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-screen">
+        <h1>Identification</h1>
+        <input type="text" id="nom" placeholder="Nom">
+        <input type="text" id="prenom" placeholder="Prénom">
+        <input type="text" id="classe" placeholder="Classe">
+        <button onclick="startExercise()" style="width: 100%; margin-top: 20px;">Commencer</button>
+    </div>
+
+    <div id="exercise-screen" class="hidden">
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        
+        <div class="exercise-grid">
+            <div class="view-3d-container">
+                <p style="font-size: 0.8rem; font-weight: bold; color: var(--accent);">MODÈLE 3D</p>
+                <img id="img-3d" src="" alt="3D">
+            </div>
+
+            <div class="projection-map">
+                <div></div>
+                <div class="drop-zone" data-expected="dessous"><span class="tag">DESSOUS</span></div>
+                <div></div>
+                
+                <div class="drop-zone" data-expected="droite"><span class="tag">DROITE</span></div>
+                <div class="drop-zone" data-expected="face"><span class="tag">FACE</span></div>
+                <div class="drop-zone" data-expected="gauche"><span class="tag">GAUCHE</span></div>
+                
+                <div></div>
+                <div class="drop-zone" data-expected="dessus"><span class="tag">DESSUS</span></div>
+                <div></div>
+            </div>
+        </div>
+
+        <div id="assets-palette" class="assets-shelf"></div>
+
+        <div style="text-align: right; margin-top: 20px;">
+            <button onclick="nextStep()">Valider et Exercice Suivant →</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="hidden" style="text-align: center;">
+        <h1>Résultats de la session</h1>
+        <div style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 20px 0;">
+            <span id="final-score-val">0</span>/20
+        </div>
+        <div id="correction-list" style="max-width: 600px; margin: 20px auto; text-align: left; background: #f1f5f9; padding: 20px; border-radius: 10px;"></div>
+        <button onclick="downloadPDF()">Télécharger le rapport PDF</button>
+    </div>
+</div>
+
+<script>
+    let currentEx = 1;
+    let score = 0;
+    let userResults = [];
+    const totalEx = 10;
+    const viewTypes = ['face', 'gauche', 'droite', 'dessus', 'dessous'];
+
+    function startExercise() {
+        if(!document.getElementById('nom').value || !document.getElementById('prenom').value) return alert("Identifiez-vous.");
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('exercise-screen').classList.remove('hidden');
+        loadExercise();
+    }
+
+    function loadExercise() {
+        document.getElementById('progress-fill').style.width = `${(currentEx/totalEx)*100}%`;
+        document.getElementById('img-3d').src = `assets/3d${currentEx}.png`;
+        
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            const label = zone.getAttribute('data-expected').toUpperCase();
+            zone.innerHTML = `<span class="tag">${label}</span>`;
+        });
+
+        const palette = document.getElementById('assets-palette');
+        palette.innerHTML = '';
+        let shuffled = [...viewTypes].sort(() => Math.random() - 0.5);
+        
+        shuffled.forEach(type => {
+            let img = document.createElement('img');
+            img.src = `assets/${type}${currentEx}.png`;
+            img.className = 'draggable-img';
+            img.id = type; 
+            img.draggable = true;
+            img.addEventListener('dragstart', (e) => e.dataTransfer.setData("text", e.target.id));
+            palette.appendChild(img);
+        });
+
+        setupDragAndDrop();
+    }
+
+    function setupDragAndDrop() {
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.ondragover = (e) => { e.preventDefault(); zone.style.borderColor = "var(--primary)"; };
+            zone.ondragleave = () => { zone.style.borderColor = "var(--border)"; };
+            zone.ondrop = (e) => {
+                e.preventDefault();
+                zone.style.borderColor = "var(--border)";
+                const id = e.dataTransfer.getData("text");
+                const img = document.getElementById(id);
+                if (zone.querySelector('img')) return; 
+                zone.appendChild(img);
+            };
+        });
+    }
+
+    function nextStep() {
+        let errors = [];
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            const expected = zone.getAttribute('data-expected');
+            const img = zone.querySelector('img');
+            if (!img || img.id !== expected) errors.push(expected);
+        });
+
+        if (errors.length === 0) score += 2;
+        userResults.push({ex: currentEx, errors: errors});
+
+        if (currentEx < totalEx) {
+            currentEx++;
+            loadExercise();
+        } else {
+            showFinalResults();
+        }
+    }
+
+    function showFinalResults() {
+        document.getElementById('exercise-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('final-score-val').innerText = score;
+        
+        const list = document.getElementById('correction-list');
+        userResults.forEach(r => {
+            const p = document.createElement('p');
+            p.innerHTML = `<strong>Ex ${r.ex} :</strong> ${r.errors.length === 0 ? '<span style="color:green">Sans faute</span>' : '<span style="color:red">Erreur(s): ' + r.errors.join(', ') + '</span>'}`;
+            list.appendChild(p);
+        });
+    }
+
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const nom = document.getElementById('nom').value;
+        const prenom = document.getElementById('prenom').value;
+
+        doc.text(`Rapport d'Examen : Projections Orthogonales`, 20, 20);
+        doc.text(`Eleve : ${prenom} ${nom}`, 20, 30);
+        doc.text(`Note : ${score}/20`, 20, 40);
+        
+        let y = 60;
+        userResults.forEach(r => {
+            doc.text(`Exercice ${r.ex} : ${r.errors.length === 0 ? "Réussi" : "Echec (" + r.errors.join(',') + ")"}`, 20, y);
+            y += 10;
+        });
+        doc.save(`Resultat_${nom}.pdf`);
+    }
+</script>
+</body>
+</html>
