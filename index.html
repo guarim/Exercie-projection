@@ -262,7 +262,7 @@
         document.getElementById('ex-title').innerText = `Pièce Mécanique n°${currentEx}`;
         document.getElementById('step-counter').innerText = `${currentEx} / ${totalEx}`;
         document.getElementById('progress-fill').style.width = `${(currentEx/totalEx)*100}%`;
-        document.getElementById('img-3d').src = `assets/3d${currentEx}.png`;
+        document.getElementById('img-3d').src = `assets1/3d${currentEx}.png`;
         
         // Nettoyage zones
         document.querySelectorAll('.drop-zone').forEach(zone => {
@@ -278,7 +278,7 @@
         
         shuffled.forEach(type => {
             let img = document.createElement('img');
-            img.src = `assets/${type}${currentEx}.png`;
+            img.src = `assets1/${type}${currentEx}.png`;
             img.className = 'draggable-img';
             img.id = type; 
             img.draggable = true;
